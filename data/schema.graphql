@@ -42,8 +42,9 @@ input EmailInput {
 }
 
 type Query{
-    obtenerClientes(limite: Int) : [Cliente]
+    obtenerClientes(limite: Int, offset: Int) : [Cliente]
     obtenerCliente(id : ID!) : Cliente
+    totalClientes: String
 }
 """ Mutation para crear nuevos clientes """
 type Mutation{

@@ -1,17 +1,24 @@
-import mongoose from 'mongoose';
 import { Clientes } from './db';
 import { rejects } from 'assert';
 
 export const resolvers = {
 	Query: {
-		obtenerClientes: (_, { limite }) => {
-			return Clientes.find({}).limit(limite);
+		obtenerClientes: (_, { limite, offset }) => {
+			return Clientes.find({}).limit(limite).skip(offset);
 		},
 		obtenerCliente: (_, { id }) => {
 			return new Promise((resolve, object) => {
 				Clientes.findById(id, (error, cliente) => {
 					if (error) rejects(error);
 					else resolve(cliente);
+				});
+			});
+		},
+		totalClientes: (_) => {
+			return new Promise((resolve, reject) => {
+				Clientes.countDocuments({}, (error, count) => {
+					if (error) rejects(error);
+					else resolve(count);
 				});
 			});
 		}
