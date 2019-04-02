@@ -84,6 +84,8 @@ type Query{
     obtenerProductos(limite: Int, offset: Int, stock : Boolean): [Producto]
     obtenerProducto(id : ID!) : Producto
     totalProductos: String
+    #Pedidos
+    obtenerPedidos(cliente : String): [Pedido]
 }
 """ Mutation para crear nuevos clientes """
 type Mutation{
