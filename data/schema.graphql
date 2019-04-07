@@ -28,8 +28,19 @@ type PedidoProducto{
     id: ID
     cantidad : Int
 }
-
-
+type ClienteTotal{
+    total : Float
+    cliente : [Cliente]
+}
+type Token{
+    token : String
+}
+type Usuario {
+    id : ID
+    usuario : String
+    nombre: String
+    rol: String
+}
 
 
 enum TipoCliente{
@@ -86,6 +97,10 @@ type Query{
     totalProductos: String
     #Pedidos
     obtenerPedidos(cliente : String): [Pedido]
+    #Graficas
+    topClientes : [ClienteTotal]
+    #Usuarios
+    obtenerUsuario :  Usuario
 }
 """ Mutation para crear nuevos clientes """
 type Mutation{
@@ -100,4 +115,8 @@ type Mutation{
     eliminarProducto(id: ID!): String
     #Pedidos
     crearPedido(input: PedidoInput) : Pedido
+    actualizarEstado(input: PedidoInput) : String
+    #Usuarios
+    crearUsuario(usuario : String!, nombre : String!, password : String!, rol: String!) : String
+    autenticarUsuario(usuario : String!, password : String!) : Token
 }

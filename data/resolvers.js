@@ -1,5 +1,16 @@
-import { Clientes, Productos, Pedidos } from './db';
+import { Clientes, Productos, Pedidos, Usuarios } from './db';
 import { rejects } from 'assert';
+import bcrypt from 'bcrypt';
+import dotenv from 'dotenv';
+import jwt from 'jsonwebtoken';
+
+dotenv.config({ path: 'variables.env' });
+
+const crearToken = (user, secreto, expiresIn) => {
+	const { usuario } = user;
+
+	return jwt.sign({ usuario }, secreto, { expiresIn });
+};
 
 export const resolvers = {
 	Query: {
@@ -52,6 +63,51 @@ export const resolvers = {
 					else resolve(pedido);
 				});
 			});
+		},
+		topClientes: (root) => {
+			return new Promise((resolve, object) => {
+				Pedidos.aggregate(
+					[
+						{
+							$match: { estado: 'COMPLETADO' }
+						},
+						{
+							$group: {
+								_id: '$cliente',
+								total: { $sum: '$total' }
+							}
+						},
+						{
+							$lookup: {
+								from: 'clientes',
+								localField: '_id',
+								foreignField: '_id',
+								as: 'cliente'
+							}
+						},
+						{
+							$sort: { total: -1 }
+						},
+						{
+							$limit: 10
+						}
+					],
+					(error, resultado) => {
+						if (error) rejects(error);
+						else resolve(resultado);
+					}
+				);
+			});
+		},
+		obtenerUsuario: (root, args, { usuarioActual }) => {
+			if (!usuarioActual) {
+				return null;
+			}
+
+			// obtener el usuario
+			const usuario = Usuarios.findOne({ usuario: usuarioActual.usuario });
+
+			return usuario;
 		}
 	},
 	Mutation: {
@@ -151,6 +207,69 @@ export const resolvers = {
 					else resolve(nuevoPedido);
 				});
 			});
+		},
+		actualizarEstado: (root, { input }) => {
+			return new Promise((resolve, object) => {
+				const { estado } = input;
+				let instruccion;
+				if (estado === 'COMPLETADO') {
+					instruccion = '-';
+				} else if (estado === 'CANCELADO') {
+					instruccion = '+';
+				}
+
+				input.pedidos.forEach((pedido) => {
+					Productos.updateOne(
+						{ _id: pedido.id },
+						{
+							$inc: {
+								stock: `${instruccion}${pedido.cantidad}`
+							}
+						},
+						function(error) {
+							if (error) return new Error(error);
+						}
+					);
+				});
+
+				Pedidos.findOneAndUpdate({ _id: input.id }, input, { new: true }, (error) => {
+					if (error) rejects(error);
+					else resolve('Se actualizo correctamente');
+				});
+			});
+		},
+		crearUsuario: async (root, { usuario, nombre, password, rol }) => {
+			const existeUsuario = await Usuarios.findOne({ usuario });
+
+			if (existeUsuario) {
+				throw new Error('El usuario ya existe.');
+			}
+
+			await new Usuarios({
+				usuario,
+				nombre,
+				password,
+				rol
+			}).save();
+
+			return 'Creado Correctamente';
+		},
+		autenticarUsuario: async (root, { usuario, password }) => {
+			const nombreUsuario = await Usuarios.findOne({ usuario });
+
+			if (!nombreUsuario) {
+				throw new Error('Usuario no encontrado !');
+			}
+
+			const passwordCorrect = await bcrypt.compare(password, nombreUsuario.password);
+
+			if (!passwordCorrect) {
+				throw new Error('Password Incorrecto');
+			}
+
+			return {
+				token: crearToken(nombreUsuario, process.env.SECRETO, '1hr')
+			};
 		}
 	}
 };
