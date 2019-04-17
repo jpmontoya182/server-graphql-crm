@@ -32,6 +32,10 @@ type ClienteTotal{
     total : Float
     cliente : [Cliente]
 }
+type VendedorTotal{
+    total: Float
+    vendedor : [Usuario]
+}
 type Token{
     token : String
 }
@@ -63,6 +67,7 @@ input ClienteInput{
     emails : [EmailInput]
     edad : Int!
     tipo: TipoCliente!
+    vendedor : ID
 }
 input EmailInput {
     email : String!
@@ -80,6 +85,7 @@ input PedidoInput {
     fecha : String
     cliente : ID
     estado : EstadoPedido
+    vendedor: ID
 }
 input PedidoProductoInput {
     id: ID
@@ -88,9 +94,9 @@ input PedidoProductoInput {
 
 
 type Query{
-    obtenerClientes(limite: Int, offset: Int) : [Cliente]
+    obtenerClientes(limite: Int, offset: Int, vendedor: String) : [Cliente]
     obtenerCliente(id : ID!) : Cliente
-    totalClientes: String
+    totalClientes(vendedor: String): String
     #Productos
     obtenerProductos(limite: Int, offset: Int, stock : Boolean): [Producto]
     obtenerProducto(id : ID!) : Producto
@@ -101,6 +107,8 @@ type Query{
     topClientes : [ClienteTotal]
     #Usuarios
     obtenerUsuario :  Usuario
+    #Vendedores
+    topVendedores : [VendedorTotal]
 }
 """ Mutation para crear nuevos clientes """
 type Mutation{

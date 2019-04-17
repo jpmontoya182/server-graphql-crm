@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { Clientes, Productos, Pedidos, Usuarios } from './db';
 import { rejects } from 'assert';
 import bcrypt from 'bcrypt';
@@ -6,6 +7,7 @@ import jwt from 'jsonwebtoken';
 
 dotenv.config({ path: 'variables.env' });
 
+const ObjectId = mongoose.Types.ObjectId;
 const crearToken = (user, secreto, expiresIn) => {
 	const { usuario } = user;
 
@@ -14,8 +16,15 @@ const crearToken = (user, secreto, expiresIn) => {
 
 export const resolvers = {
 	Query: {
-		obtenerClientes: (_, { limite, offset }) => {
-			return Clientes.find({}).limit(limite).skip(offset);
+		obtenerClientes: (_, { limite, offset, vendedor }) => {
+			let filtro;
+			if (vendedor) {
+				filtro = {
+					vendedor: new ObjectId(vendedor)
+				};
+			}
+
+			return Clientes.find(filtro).limit(limite).skip(offset);
 		},
 		obtenerCliente: (_, { id }) => {
 			return new Promise((resolve, object) => {
@@ -25,9 +34,16 @@ export const resolvers = {
 				});
 			});
 		},
-		totalClientes: (_) => {
+		totalClientes: (_, { vendedor }) => {
+			let filtro;
+			if (vendedor) {
+				filtro = {
+					vendedor: new ObjectId(vendedor)
+				};
+			}
+
 			return new Promise((resolve, object) => {
-				Clientes.countDocuments({}, (error, count) => {
+				Clientes.countDocuments(filtro, (error, count) => {
 					if (error) rejects(error);
 					else resolve(count);
 				});
@@ -108,6 +124,41 @@ export const resolvers = {
 			const usuario = Usuarios.findOne({ usuario: usuarioActual.usuario });
 
 			return usuario;
+		},
+		topVendedores: (root) => {
+			return new Promise((resolve, object) => {
+				Pedidos.aggregate(
+					[
+						{
+							$match: { estado: 'COMPLETADO' }
+						},
+						{
+							$group: {
+								_id: '$vendedor',
+								total: { $sum: '$total' }
+							}
+						},
+						{
+							$lookup: {
+								from: 'usuarios',
+								localField: '_id',
+								foreignField: '_id',
+								as: 'vendedor'
+							}
+						},
+						{
+							$sort: { total: -1 }
+						},
+						{
+							$limit: 10
+						}
+					],
+					(error, resultado) => {
+						if (error) rejects(error);
+						else resolve(resultado);
+					}
+				);
+			});
 		}
 	},
 	Mutation: {
@@ -119,7 +170,8 @@ export const resolvers = {
 				emails: input.emails,
 				edad: input.edad,
 				tipo: input.tipo,
-				pedidos: input.pedidos
+				pedidos: input.pedidos,
+				vendedor: input.vendedor
 			});
 			nuevoCliente.id = nuevoCliente._id;
 
@@ -183,7 +235,8 @@ export const resolvers = {
 				total: input.total,
 				fecha: new Date(),
 				cliente: input.cliente,
-				estado: 'PENDIENTE'
+				estado: 'PENDIENTE',
+				vendedor: input.vendedor
 			});
 			nuevoPedido.id = nuevoPedido._id;
 
